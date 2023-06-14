@@ -1,7 +1,7 @@
 import argparse
 import os
 import warnings
-from typing import TYPE_CHECKING, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Optional, Tuple, Union, Callable
 
 import numpy as np
 import torch
@@ -47,6 +47,7 @@ def transcribe(
     word_timestamps: bool = False,
     prepend_punctuations: str = "\"'“¿([{-",
     append_punctuations: str = "\"'.。,，!！?？:：”)]}、",
+    progress_callback: Optional[Callable[[float], None]] = None,
     **decode_options,
 ):
     """
@@ -100,6 +101,10 @@ def transcribe(
 
     decode_options: dict
         Keyword arguments to construct `DecodingOptions` instances
+
+    progress_callback: Callable[[float], None]
+        If provided, a function that will be called during the transcription process
+        with float argument: current progress / total progress.
 
     Returns
     -------
@@ -223,6 +228,10 @@ def transcribe(
         total=content_frames, unit="frames", disable=verbose is not False
     ) as pbar:
         while seek < content_frames:
+            if progress_callback is not None:
+                progress_value = seek / content_frames
+                progress_callback(progress_value)
+
             time_offset = float(seek * HOP_LENGTH / SAMPLE_RATE)
             mel_segment = mel[:, seek : seek + N_FRAMES]
             segment_size = min(N_FRAMES, content_frames - seek)
